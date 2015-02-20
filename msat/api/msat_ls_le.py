@@ -38,9 +38,9 @@ import config
 import optparse
 import xmlrpclib
 
-usage = '''list software channels'''
+usage = '''list system and software channels entitlements'''
 
-description = '''This script lists the available software channels on the Satellite server.'''
+description = '''This script lists the used system and software channels entitlements on the Satellite server.'''
 
 parser = optparse.OptionParser(
   usage = usage,
