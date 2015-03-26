@@ -163,7 +163,7 @@ for i in rpms:
   if not i['epoch']:
     rpm = "%s-%s-%s.%s" % (i['name'], i['version'], i['release'], i['arch_label'])
   else:
-    rpm = "%s:%s-%s-%s.%s" % (i['epoch'], i['name'], i['version'], i['release'], i['arch_label'])
+    rpm = "%s-%s-%s:%s.%s" % (i['name'], i['version'], i['release'], i['epoch'], i['arch_label'])
   try:
     d[rpm]
     d[rpm] = i['id']
