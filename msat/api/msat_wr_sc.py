@@ -35,14 +35,15 @@
 #
 
 import config
+import hashlib
 import optparse
 import os.path
+import pycurl
 import shutil
 import stat
 import sys
 import time
 import xmlrpclib
-import urllib2
 
 usage = '''save specified software channel'''
 
@@ -183,10 +184,6 @@ except xmlrpclib.Fault, e:
   print >> sys.stderr, options.softwarechannel_label
   sys.exit(1)
 
-if os.path.exists(export_path):
-  shutil.rmtree(export_path)
-os.makedirs(export_path)
-
 script = 'sc-' + options.softwarechannel_label + '.sh'
 t = time.strftime("%Y-%m-%d %H:%M", time.localtime())
 y = time.strftime("%Y", time.localtime())
@@ -255,7 +252,8 @@ print >> fd, "  --softwarechannel-parent \"%s\"" % (details['parent_channel_labe
 
 if options.rpms_included:
   rpms = os.path.join(export_path, 'rpms')
-  os.makedirs(rpms)
+  if not os.path.isdir(rpms):
+    os.makedirs(rpms)
   try:
     list = client.channel.software.listAllPackages(
       key,
@@ -277,10 +275,23 @@ if options.rpms_included:
       print >> sys.stderr, id
 
     filename = pkg['name'] + '-' + pkg['version'] + '-' + pkg['release'] + '.' + pkg['arch_label'] + '.rpm'
-    data = urllib2.urlopen(pkg_url)
-    fd = open(rpms + '/' + filename, 'wb')
-    fd.write(data.read())
-    fd.close
+    if not os.path.isfile(rpms + '/' + filename):
+      c = pycurl.Curl()
+      c.setopt(c.URL, pkg_url)
+      with open(rpms + '/' + filename, 'wb') as f:
+        c.setopt(c.WRITEFUNCTION, f.write)
+        c.perform()
+    else:
+      chk = hashlib.md5(open(rpms + '/' + filename).read()).hexdigest()
+      if pkg['checksum'] == chk:
+        print "checksum of %s matches, not downloading again." % (filename)
+      else:
+        print "checksum mismatch, redownloading %s" % (filename)
+        c = pycurl.Curl()
+        c.setopt(c.URL, pkg_url)
+        with open(rpms + '/' + filename, 'wb') as f:
+          c.setopt(c.WRITEFUNCTION, f.write)
+          c.perform()
 
   print >> fd, "P=$(/usr/bin/dirname $0)"
   print >> fd, "# To push the RPM's with rhnpush"
